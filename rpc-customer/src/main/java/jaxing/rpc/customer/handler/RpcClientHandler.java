@@ -12,6 +12,9 @@ import jaxing.rpc.customer.connect.ConnectionPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
@@ -19,8 +22,6 @@ public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
     private ConcurrentHashMap<String,RpcResult> pendingMap = new ConcurrentHashMap<>();
     private RpcProducer rpcProducer;
     private volatile ChannelHandlerContext ctx;
-
-
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, RpcResponse rpcResponse) throws Exception {
         logger.debug("接收到响应: " + rpcResponse);
@@ -70,5 +71,22 @@ public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
             logger.error("发送请求出现异常: " + e.getMessage());
         }
         return rpcResult;
+    }
+
+    @Override
+    public String toString() {
+        InetSocketAddress socketAddress = (InetSocketAddress) ctx.channel().remoteAddress();
+        InetAddress address = socketAddress.getAddress();
+        return address.getHostAddress() + ":" + socketAddress.getPort();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof RpcClientHandler){
+            RpcClientHandler rpcClientHandler = new RpcClientHandler();
+            return this.toString().equals(rpcClientHandler.toString());
+        }else{
+            return false;
+        }
     }
 }

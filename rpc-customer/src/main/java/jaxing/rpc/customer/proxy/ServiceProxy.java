@@ -35,7 +35,7 @@ public class ServiceProxy<T> implements InvocationHandler {
             }
         }
         RpcRequest request = createRequest(method, args);
-        RpcClientHandler handler = ConnectionPool.getInstance().findConnection(request.getRequestId(),method.getDeclaringClass().getName(),version);
+        RpcClientHandler handler = ConnectionPool.getInstance().findConnection(request,method.getDeclaringClass().getName(),version);
         if (handler == null){
             logger.error("无法找到符合条件的客户端, 接口:{} 版本:{}",clazz.getName(),version);
             return null;

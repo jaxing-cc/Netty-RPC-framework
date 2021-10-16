@@ -4,7 +4,10 @@
 
 - 项目使用TCP协议进行数据传输，Zookeeper做服务注册，可以和Spring框架进行整合
 - 客户端使用长连接，以免频繁连接断连的性能损耗,
-- 对于有同样服务的生产者们，可以使用负载均衡操作,默认随机,现在仅有 random、hash两种，以后会加
+- 对于有同样服务的生产者们，可以使用负载均衡操作
+    - HashLoadBalance:同一个接口总是访问同一个服务器
+    - RandomLoadBalance:随机访问
+    - RotatedLoadBalance:轮转访问
 - 两个主要对象: RpcClient(消费者) , RpcServer(生产者)
 - SpringBoot项目可以在pom排除本项目的Log依赖，否则会冲突
 ```xml

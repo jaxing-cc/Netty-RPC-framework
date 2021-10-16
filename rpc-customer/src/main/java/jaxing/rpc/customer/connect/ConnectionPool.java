@@ -6,6 +6,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import jaxing.rpc.common.obj.RpcProducer;
+import jaxing.rpc.common.obj.RpcRequest;
 import jaxing.rpc.common.obj.RpcService;
 import jaxing.rpc.customer.config.RpcConfig;
 import jaxing.rpc.customer.handler.RpcClientHandler;
@@ -127,7 +128,7 @@ public class ConnectionPool {
         handlerMap.remove(rpcProducer);
     }
 
-    public RpcClientHandler findConnection(String requestId,String interfaceName,String version) {
+    public RpcClientHandler findConnection(RpcRequest request, String interfaceName, String version) {
         List<RpcClientHandler> list = new ArrayList<>();
         handlerMap.forEach((k,v)->{
             if (k.contains(interfaceName,version)){
@@ -135,6 +136,6 @@ public class ConnectionPool {
             }
         });
         //负载均衡
-        return config.getLoadBalance().get(requestId,list);
+        return config.getLoadBalance().get(request,list);
     }
 }
