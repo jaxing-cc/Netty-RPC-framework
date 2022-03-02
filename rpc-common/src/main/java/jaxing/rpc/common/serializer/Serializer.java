@@ -3,5 +3,5 @@ package jaxing.rpc.common.serializer;
 public interface Serializer {
     <T> byte[] serialize(T obj);
 
-    <T> Object deserialize(byte[] bytes, Class<T> clazz);
+    <T> T deserialize(byte[] bytes, Class<T> clazz);
 }

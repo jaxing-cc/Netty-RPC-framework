@@ -43,7 +43,7 @@ public class ServiceProxy<T> implements InvocationHandler {
         RpcConfig config = ConnectionPool.getInstance().getConfig();
         Class<?> returnType = method.getReturnType();
         byte[] data = handler.sendRequest(request).get(config.getMaxResponseTime(), config.getMaxResponseTimeUnit());
-        logger.info("请求id {}, 返回值 {}",request.getRequestId(), new String(data));
+        logger.info("请求id {}, 返回值 {}",request.getRequestId(), data == null ? null : new String(data));
         return config.getSerializer().deserialize(data,returnType);
     }
 

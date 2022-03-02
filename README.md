@@ -18,6 +18,73 @@
           </exclusion>
     </exclusions>
 ```
+## 关于序列化
+
+本项目将bean注册到zookeeper中时使用了Jackson，因为考虑到需要一定的可读性，所以这块是写死的。
+在数据参数与返回之的传输过程中的序列化方式是可配置的，目前提供了三个可供选择:
+
+- protostuff (基于protobuf的一种序列化方式)
+- kryo
+- Jackson
+
+我也针对这三种方法进行了性能测试，**测试对象**的build方法与类代码如下:
+
+```java
+    //num = 树的深度， 我测试用的3，大概 (5)^ 3个节点 
+    public static TestTarget getTestTarget(int num) {
+            if (num == 0){
+                return null;
+            }
+            TestTarget testTarget = new TestTarget();
+            testTarget.setAge((int) (Math.random() * 10000));
+            testTarget.setName(UUID.randomUUID().toString());
+            testTarget.setMap(getRandomMap());
+            ArrayList<TestTarget> objects = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                objects.add(getTestTarget(num - 1)); //树型构造
+            }
+            testTarget.setChild(objects);
+            return testTarget;
+        }
+    
+        private static HashMap<Long,String> getRandomMap(){
+            HashMap<Long, String> longStringHashMap = new HashMap<>();
+            int i = (int) (Math.random() * 200);
+            for (int j = 0; j < i; j++) {
+                longStringHashMap.put((long) (Math.random() * 200),UUID.randomUUID().toString());
+            }
+            return longStringHashMap;
+        }
+```
+TestTarget class:
+
+```java
+
+@Getter
+@Setter
+public class TestTarget {
+    private String name;
+    private Integer age;
+    private List<TestTarget> child;
+    private HashMap<Long,String> map;
+}
+
+```
+这里直接放测试结果(多次测试结果相差不大):
+
+```text
+kryo :测试序列化: [148]ms
+kryo :测试反序列化: [18]ms
+kryo :序列化大小 [94889]
+protostuff :测试序列化: [3]ms
+protostuff :测试反序列化: [3]ms
+protostuff :序列化大小 [98459]
+json :测试序列化: [75]ms
+json :测试反序列化: [115]ms
+json :序列化大小 [133037]
+```
+
+结论: protobuf性能好,序列化后的大小也不多,使用protostuff刚好解决静态编译的问题,非常好用。
 
 ## 使用方法
 

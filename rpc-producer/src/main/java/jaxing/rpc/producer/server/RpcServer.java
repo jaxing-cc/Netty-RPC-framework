@@ -19,7 +19,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
-import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 

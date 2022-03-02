@@ -7,9 +7,7 @@ import jaxing.rpc.common.serializer.JsonSerializer;
 import jaxing.rpc.common.serializer.Serializer;
 import jaxing.rpc.common.zk.CuratorClient;
 import jaxing.rpc.producer.config.RpcServerConfig;
-import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.state.ConnectionState;
-import org.apache.curator.framework.state.ConnectionStateListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.HashMap;
@@ -19,7 +17,6 @@ import java.util.Map;
 public class ServiceRegistry {
     private static final Logger logger = LoggerFactory.getLogger(ServiceRegistry.class);
     private CuratorClient curatorClient;
-    private Serializer serializer;
     private RpcServerConfig config;
     private HashSet<String> set;
     public ServiceRegistry(RpcServerConfig config) {
@@ -29,7 +26,6 @@ public class ServiceRegistry {
                 config.getZkNameSpace(),
                 config.getZkSessionTimeOut(),
                 config.getZkConnectionTimeOut());
-        serializer = config.getSerializer();
     }
 
     public void registerService(String host, int port, Map<String, Object> serviceMap) {
@@ -54,7 +50,8 @@ public class ServiceRegistry {
         rpcProducer.setPort(port);
         rpcProducer.setServices(map);
         try {
-            byte[] data = serializer.serialize(rpcProducer);
+//            byte[] data = serializer.serialize(rpcProducer);
+            byte[] data = JsonSerializer.getInstance().serialize(rpcProducer);
             String pathData = config.getZkRegisterNameSpace() + "/" + rpcProducer.toString();
             logger.info("注册路径: " + pathData);
             pathData = curatorClient.createPathData(pathData, data);
