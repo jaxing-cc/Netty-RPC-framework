@@ -1,7 +1,7 @@
 package jaxing.rpc.customer.proxy;
 
 import jaxing.rpc.common.obj.RpcRequest;
-import jaxing.rpc.customer.config.RpcConfig;
+import jaxing.rpc.customer.config.RpcClientConfig;
 import jaxing.rpc.customer.connect.ConnectionPool;
 import jaxing.rpc.customer.handler.RpcClientHandler;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class ServiceProxy<T> implements InvocationHandler {
             logger.error("无法找到符合条件的客户端, 接口:{} 版本:{}",clazz.getName(),version);
             return null;
         }
-        RpcConfig config = ConnectionPool.getInstance().getConfig();
+        RpcClientConfig config = ConnectionPool.getInstance().getConfig();
         Class<?> returnType = method.getReturnType();
         byte[] data = handler.sendRequest(request).get(config.getMaxResponseTime(), config.getMaxResponseTimeUnit());
         logger.info("请求id {}, 返回值 {}",request.getRequestId(), data == null ? null : new String(data));

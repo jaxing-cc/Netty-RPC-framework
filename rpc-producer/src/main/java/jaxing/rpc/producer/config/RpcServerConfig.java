@@ -20,7 +20,6 @@ public class RpcServerConfig {
     //zk连接超时 ms
     private int zkConnectionTimeOut;
     //序列化
-    @Setter
     private Serializer serializer;
     //服务启动端口
     private int port;

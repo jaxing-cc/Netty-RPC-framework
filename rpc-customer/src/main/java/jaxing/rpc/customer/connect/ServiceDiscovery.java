@@ -3,7 +3,7 @@ package jaxing.rpc.customer.connect;
 import jaxing.rpc.common.obj.RpcProducer;
 import jaxing.rpc.common.serializer.JsonSerializer;
 import jaxing.rpc.common.zk.CuratorClient;
-import jaxing.rpc.customer.config.RpcConfig;
+import jaxing.rpc.customer.config.RpcClientConfig;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import org.slf4j.Logger;
@@ -14,10 +14,10 @@ import java.util.Set;
 
 public class ServiceDiscovery {
     private static final Logger logger = LoggerFactory.getLogger(ServiceDiscovery.class);
-    private final RpcConfig config;
+    private final RpcClientConfig config;
     public CuratorClient curatorClient;
 
-    public ServiceDiscovery(RpcConfig config) {
+    public ServiceDiscovery(RpcClientConfig config) {
         ConnectionPool.getInstance().setConfig(config);
         this.config = config;
         this.curatorClient = new CuratorClient(config.getZkAddress(),
@@ -51,8 +51,7 @@ public class ServiceDiscovery {
                 }
             });
         } catch (Exception ex) {
-            ex.printStackTrace();
-            logger.error("监听出现异常: " + ex.getMessage());
+            logger.error("监听出现异常: " + ex.toString());
         }
     }
     private void getServiceAndUpdateServer() {

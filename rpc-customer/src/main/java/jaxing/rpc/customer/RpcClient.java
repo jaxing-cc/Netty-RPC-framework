@@ -1,7 +1,7 @@
 package jaxing.rpc.customer;
 
 import jaxing.rpc.common.annotation.RpcConsumer;
-import jaxing.rpc.customer.config.RpcConfig;
+import jaxing.rpc.customer.config.RpcClientConfig;
 import jaxing.rpc.customer.connect.ConnectionPool;
 import jaxing.rpc.customer.connect.ServiceDiscovery;
 import jaxing.rpc.customer.proxy.ServiceProxy;
@@ -19,9 +19,9 @@ import java.util.HashMap;
 
 public class RpcClient implements ApplicationContextAware, DisposableBean {
     private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
-    private final RpcConfig config;
+    private final RpcClientConfig config;
     private ServiceDiscovery serviceDiscovery;
-    public RpcClient(RpcConfig config){
+    public RpcClient(RpcClientConfig config){
         this.config = config;
         serviceDiscovery = new ServiceDiscovery(config);
     }

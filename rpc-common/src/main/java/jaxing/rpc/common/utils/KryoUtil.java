@@ -3,35 +3,17 @@ package jaxing.rpc.common.utils;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import jaxing.rpc.common.obj.RpcProducer;
-import jaxing.rpc.common.obj.RpcResponse;
-import jaxing.rpc.common.obj.RpcService;
-import jaxing.rpc.common.serializer.KryoSerializer;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
 
 public class KryoUtil {
-
-//    public static void main(String[] args) {
-//        RpcProducer producer = new RpcProducer();
-//        producer.setPort(1);
-//        producer.setHost("123");
-//        HashMap<String, RpcService> services = new HashMap<>();
-//        services.put("123",new RpcService());
-//        producer.setServices(services);
-//        KryoSerializer kryoSerializer = new KryoSerializer();
-//        System.out.println(kryoSerializer.serialize(producer).length);
-//    }
     //每个线程的 Kryo 实例
     private static final ThreadLocal<Kryo> kryoLocal = ThreadLocal.withInitial(() -> {
         Kryo kryo = new Kryo();
-
         kryo.setReferences(true);
         kryo.setRegistrationRequired(false);
-        //Fix the NPE bug when deserializing Collections.
         kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
         return kryo;
     });
@@ -103,7 +85,7 @@ public class KryoUtil {
         Kryo kryo = getInstance();
         kryo.writeObject(output, obj);
         output.flush();
-
+        output.close();
         return byteArrayOutputStream.toByteArray();
     }
 
@@ -120,8 +102,8 @@ public class KryoUtil {
     public static <T> T readObjectFromByteArray(byte[] byteArray, Class<T> clazz) {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArray);
         Input input = new Input(byteArrayInputStream);
-
         Kryo kryo = getInstance();
+        input.close();
         return kryo.readObject(input, clazz);
     }
 }

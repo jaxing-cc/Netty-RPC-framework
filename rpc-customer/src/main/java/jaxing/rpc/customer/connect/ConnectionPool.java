@@ -8,7 +8,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import jaxing.rpc.common.obj.RpcProducer;
 import jaxing.rpc.common.obj.RpcRequest;
 import jaxing.rpc.common.obj.RpcService;
-import jaxing.rpc.customer.config.RpcConfig;
+import jaxing.rpc.customer.config.RpcClientConfig;
 import jaxing.rpc.customer.handler.RpcClientHandler;
 import jaxing.rpc.customer.handler.RpcClientInitializer;
 import lombok.Getter;
@@ -16,6 +16,7 @@ import lombok.Setter;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,8 +33,9 @@ public class ConnectionPool {
     private ConcurrentHashMap<RpcProducer, RpcClientHandler> handlerMap;
     @Setter
     @Getter
-    private RpcConfig config;
+    private RpcClientConfig config;
     private volatile boolean isRunning = true;
+
     private ConnectionPool() {
         handlerMap = new ConcurrentHashMap<>();
         producerSet = new CopyOnWriteArraySet<>();
@@ -49,21 +51,22 @@ public class ConnectionPool {
 
     public void updateConnectStatus(Set<RpcProducer> set) {
         for (RpcProducer producer : set) {
-            if (!producerSet.contains(producer)){
+            if (!producerSet.contains(producer)) {
                 logger.info("加入新连接 " + producer);
                 connectProducer(producer);
             }
         }
         for (RpcProducer producer : producerSet) {
-            if (!set.contains(producer)){
+            if (!set.contains(producer)) {
                 logger.info("删除无效连接 " + producer);
                 removeAndCloseHandler(producer);
             }
         }
     }
-    public void removeAndCloseHandler(RpcProducer producer){
+
+    public void removeAndCloseHandler(RpcProducer producer) {
         RpcClientHandler handler = handlerMap.get(producer);
-        if (handler != null){
+        if (handler != null) {
             handler.close();
         }
         producerSet.remove(producer);
@@ -85,29 +88,29 @@ public class ConnectionPool {
 
     private void connectProducer(RpcProducer rpcProducer) {
         Collection<RpcService> services = rpcProducer.getServices().values();
-        if (services.isEmpty()){
+        if (services.isEmpty()) {
             logger.info(rpcProducer + " 中没有可用服务,注册失败! ");
             return;
         }
         producerSet.add(rpcProducer);
         InetSocketAddress remote = new InetSocketAddress(rpcProducer.getHost(), rpcProducer.getPort());
-        threadPool.submit(()->{
+        threadPool.submit(() -> {
             Bootstrap b = new Bootstrap();
             b.group(eventLoopGroup).channel(NioSocketChannel.class).handler(new RpcClientInitializer(config));
             ChannelFuture channelFuture = b.connect(remote);
-            channelFuture.addListener((future) ->{
+            channelFuture.addListener((future) -> {
                 //连接完毕
-                if (future.isSuccess()){
+                if (future.isSuccess()) {
                     logger.info(rpcProducer + " 主机注册成功! ");
                     for (RpcService service : services) {
-                        logger.debug("(" +service + " )服务被注册...");
+                        logger.debug("(" + service + " )服务被注册...");
                     }
                     RpcClientHandler handler = channelFuture.channel().pipeline().get(RpcClientHandler.class);
-                    handlerMap.put(rpcProducer,handler);
+                    handlerMap.put(rpcProducer, handler);
                     handler.setProducer(rpcProducer);
-                }else{
+                } else {
                     producerSet.remove(rpcProducer);
-                    logger.error("远程主机: [" +remote + "] 连接失败!");
+                    logger.error("远程主机: [" + remote + "] 连接失败!");
                 }
             });
         });
@@ -130,12 +133,12 @@ public class ConnectionPool {
 
     public RpcClientHandler findConnection(RpcRequest request, String interfaceName, String version) {
         List<RpcClientHandler> list = new ArrayList<>();
-        handlerMap.forEach((k,v)->{
-            if (k.contains(interfaceName,version)){
+        handlerMap.forEach((k, v) -> {
+            if (k.contains(interfaceName, version)) {
                 list.add(v);
             }
         });
         //负载均衡
-        return config.getLoadBalance().get(request,list);
+        return config.getLoadBalance().get(request, list);
     }
 }

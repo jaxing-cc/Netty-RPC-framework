@@ -7,12 +7,12 @@ import jaxing.rpc.common.codec.RpcDecoder;
 import jaxing.rpc.common.codec.RpcEncoder;
 import jaxing.rpc.common.obj.RpcRequest;
 import jaxing.rpc.common.obj.RpcResponse;
-import jaxing.rpc.customer.config.RpcConfig;
+import jaxing.rpc.customer.config.RpcClientConfig;
 
 public class RpcClientInitializer extends ChannelInitializer<SocketChannel> {
-    private final RpcConfig config;
+    private final RpcClientConfig config;
 
-    public RpcClientInitializer(RpcConfig config) {
+    public RpcClientInitializer(RpcClientConfig config) {
         this.config = config;
     }
 
