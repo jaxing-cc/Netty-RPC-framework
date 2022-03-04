@@ -67,6 +67,9 @@ public class ServiceDiscovery {
                 dataList.add(producer);
                 sb.delete(0,sb.length());
             }
+            for (RpcProducer producer : dataList) {
+                logger.info("从Zookeeper发现的服务: " + producer);
+            }
             UpdateConnectedServer(dataList);
         } catch (Exception e) {
             logger.error("注册服务时出现异常: " + e.getMessage());

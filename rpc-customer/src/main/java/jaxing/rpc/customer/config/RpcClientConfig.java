@@ -30,6 +30,8 @@ public class RpcClientConfig {
     private int maxResponseTime;
     //最大响应时间单位
     private TimeUnit maxResponseTimeUnit;
+    //懒连接，只有在使用方法的时候才连接服务器
+    private boolean lazyConnect;
     public static RpcClientConfig getConfig(String zkAddress){
         return new RpcClientConfig().configZk(zkAddress,
                 Constant.nameSpace,
@@ -38,7 +40,8 @@ public class RpcClientConfig {
                 5000)
                 .configLoadBalance(new RandomLoadBalance())
                 .configMaxResponseTime(5000,TimeUnit.SECONDS)
-                .configSerializer(new JsonSerializer());
+                .configSerializer(new JsonSerializer())
+                .configLazyConnect(false);
     }
     public RpcClientConfig configZk(String zkAddress, String zkNameSpace, String zkRegisterNameSpace, int zkSessionTimeOut, int zkConnectionTimeOut){
         this.zkAddress = zkAddress;
@@ -49,6 +52,11 @@ public class RpcClientConfig {
         return this;
     }
 
+
+    public RpcClientConfig configLazyConnect(boolean lazyConnect){
+        this.lazyConnect = lazyConnect;
+        return this;
+    }
     public RpcClientConfig configSerializer(Serializer serializer){
         this.serializer = serializer;
         return this;

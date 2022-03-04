@@ -19,10 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class ConnectionPool {
     private static final Logger logger = LoggerFactory.getLogger(ConnectionPool.class);
@@ -52,8 +52,14 @@ public class ConnectionPool {
     public void updateConnectStatus(Set<RpcProducer> set) {
         for (RpcProducer producer : set) {
             if (!producerSet.contains(producer)) {
-                logger.info("加入新连接 " + producer);
-                connectProducer(producer);
+                if (config.isLazyConnect()){
+                    logger.info("发现新连接，lazyConnection = true，使用时才会建立连接 " + producer);
+                    //在使用到该连接时才发生连接
+                    producerSet.add(producer);
+                }else{
+                    logger.info("开始建立新连接 " + producer);
+                    connectProducer(producer);
+                }
             }
         }
         for (RpcProducer producer : producerSet) {
@@ -61,6 +67,27 @@ public class ConnectionPool {
                 logger.info("删除无效连接 " + producer);
                 removeAndCloseHandler(producer);
             }
+        }
+    }
+
+    public void updateConnectStatus(RpcProducer producer, PathChildrenCacheEvent.Type type) {
+        if (type == PathChildrenCacheEvent.Type.CHILD_ADDED && !producerSet.contains(producer)) {
+            if (config.isLazyConnect()){
+                producerSet.add(producer);
+            }else{
+                connectProducer(producer);
+            }
+        } else if (type == PathChildrenCacheEvent.Type.CHILD_UPDATED) {
+            removeAndCloseHandler(producer);
+            if (config.isLazyConnect()){
+                producerSet.add(producer);
+            }else{
+                connectProducer(producer);
+            }
+        } else if (type == PathChildrenCacheEvent.Type.CHILD_REMOVED) {
+            removeAndCloseHandler(producer);
+        } else {
+            throw new IllegalArgumentException("错误的类型: " + type);
         }
     }
 
@@ -73,47 +100,49 @@ public class ConnectionPool {
         handlerMap.remove(producer);
     }
 
-    public void updateConnectStatus(RpcProducer producer, PathChildrenCacheEvent.Type type) {
-        if (type == PathChildrenCacheEvent.Type.CHILD_ADDED && !producerSet.contains(producer)) {
-            connectProducer(producer);
-        } else if (type == PathChildrenCacheEvent.Type.CHILD_UPDATED) {
-            removeAndCloseHandler(producer);
-            connectProducer(producer);
-        } else if (type == PathChildrenCacheEvent.Type.CHILD_REMOVED) {
-            removeAndCloseHandler(producer);
-        } else {
-            throw new IllegalArgumentException("错误的类型: " + type);
-        }
+    private void connectProducer(RpcProducer rpcProducer) {
+        connectProducer(rpcProducer,false);
     }
 
-    private void connectProducer(RpcProducer rpcProducer) {
-        Collection<RpcService> services = rpcProducer.getServices().values();
-        if (services.isEmpty()) {
+    private void connectProducer(RpcProducer rpcProducer,boolean syncFlag) {
+        if (rpcProducer.getServices().values().isEmpty()) {
             logger.info(rpcProducer + " 中没有可用服务,注册失败! ");
             return;
         }
         producerSet.add(rpcProducer);
+        if (syncFlag){
+            connect(rpcProducer,true);
+        }else{
+            threadPool.submit(() -> connect(rpcProducer, false));
+        }
+    }
+
+    private void connect(RpcProducer rpcProducer,boolean syncFlag){
         InetSocketAddress remote = new InetSocketAddress(rpcProducer.getHost(), rpcProducer.getPort());
-        threadPool.submit(() -> {
-            Bootstrap b = new Bootstrap();
-            b.group(eventLoopGroup).channel(NioSocketChannel.class).handler(new RpcClientInitializer(config));
-            ChannelFuture channelFuture = b.connect(remote);
-            channelFuture.addListener((future) -> {
-                //连接完毕
-                if (future.isSuccess()) {
-                    logger.info(rpcProducer + " 主机注册成功! ");
-                    for (RpcService service : services) {
-                        logger.debug("(" + service + " )服务被注册...");
-                    }
-                    RpcClientHandler handler = channelFuture.channel().pipeline().get(RpcClientHandler.class);
-                    handlerMap.put(rpcProducer, handler);
-                    handler.setProducer(rpcProducer);
-                } else {
-                    producerSet.remove(rpcProducer);
-                    logger.error("远程主机: [" + remote + "] 连接失败!");
+        Bootstrap b = new Bootstrap();
+        b.group(eventLoopGroup).channel(NioSocketChannel.class).handler(new RpcClientInitializer(config));
+        ChannelFuture channelFuture = b.connect(remote);
+        channelFuture.addListener((future) -> {
+            //连接完毕
+            if (future.isSuccess()) {
+                logger.info(rpcProducer + " 主机注册成功! ");
+                for (RpcService service : rpcProducer.getServices().values()) {
+                    logger.debug("(" + service + " )服务被注册...");
                 }
-            });
+                RpcClientHandler handler = channelFuture.channel().pipeline().get(RpcClientHandler.class);
+                handlerMap.put(rpcProducer, handler);
+                handler.setProducer(rpcProducer);
+            } else {
+                logger.error("远程主机: [" + remote + "] 连接失败!");
+            }
         });
+        if (syncFlag){
+            try {
+                channelFuture.sync();
+            } catch (InterruptedException e) {
+                logger.error(e.toString());
+            }
+        }
     }
 
     public void stop() {
@@ -132,7 +161,14 @@ public class ConnectionPool {
     }
 
     public RpcClientHandler findConnection(RpcRequest request, String interfaceName, String version) {
+        //找不到对应handler，有可能是建立链接
+        Set<RpcProducer> targetSet = producerSet.stream().filter(rpcProducer -> rpcProducer.contains(interfaceName, version)).collect(Collectors.toSet());
         List<RpcClientHandler> list = new ArrayList<>();
+        for (RpcProducer producer : targetSet) {
+            if (!handlerMap.containsKey(producer)){
+                connectProducer(producer,true);
+            }
+        }
         handlerMap.forEach((k, v) -> {
             if (k.contains(interfaceName, version)) {
                 list.add(v);
